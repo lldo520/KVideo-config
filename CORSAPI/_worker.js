@@ -1,4 +1,4 @@
-// 统一入口：兼容 Cloudflare Workers 和 Pages Functions
+// 统一入口
 export default {
   async fetch(request, env, ctx) {
     if (env && env.KV && typeof globalThis.KV === 'undefined') {
@@ -15,12 +15,9 @@ const CORS_HEADERS = {
   'Access-Control-Max-Age': '86400',
 }
 
-const EXCLUDE_HEADERS = new Set([
-  'content-encoding', 'content-length', 'transfer-encoding',
-  'connection', 'keep-alive', 'set-cookie', 'set-cookie2'
-])
+const EXCLUDE_HEADERS = new Set(['content-encoding', 'content-length', 'transfer-encoding', 'connection', 'keep-alive', 'set-cookie', 'set-cookie2'])
 
-// 资源配置
+// 数据源配置：增加 name 字段以适配 UI
 const JSON_SOURCES = {
   'lite': {
     name: '精简版 (Lite)',
@@ -36,28 +33,24 @@ const JSON_SOURCES = {
   }
 }
 
-const FORMAT_CONFIG = {
-  '0': { proxy: false },
-  'raw': { proxy: false },
-  '1': { proxy: true },
-  'proxy': { proxy: true }
-}
-
-/**
- * 递归处理 JSON，支持 api 和 baseUrl 字段
- */
+// baseUrl 字段前缀替换
 function addOrReplacePrefix(obj, newPrefix) {
   if (typeof obj !== 'object' || obj === null) return obj
   if (Array.isArray(obj)) return obj.map(item => addOrReplacePrefix(item, newPrefix))
   
   const newObj = {}
   for (const key in obj) {
-    const lowerKey = key.toLowerCase();
-    if ((lowerKey === 'api' || lowerKey === 'baseurl') && typeof obj[key] === 'string') {
+    if (key === 'baseUrl' && typeof obj[key] === 'string') {
       let apiUrl = obj[key]
+      
+      // 清除旧的代理前缀（如果有）
       const urlIndex = apiUrl.indexOf('?url=')
       if (urlIndex !== -1) apiUrl = apiUrl.slice(urlIndex + 5)
-      if (!apiUrl.startsWith(newPrefix)) apiUrl = newPrefix + apiUrl
+      
+      // 直接拼接，不使用 encodeURIComponent
+      if (!apiUrl.startsWith(newPrefix)) {
+        apiUrl = newPrefix + apiUrl
+      }
       newObj[key] = apiUrl
     } else {
       newObj[key] = addOrReplacePrefix(obj[key], newPrefix)
@@ -66,14 +59,10 @@ function addOrReplacePrefix(obj, newPrefix) {
   return newObj
 }
 
-/**
- * 自动缓存获取 (1分钟有效期)
- */
 async function getCachedJSON(url) {
   const kvAvailable = typeof KV !== 'undefined' && KV && typeof KV.get === 'function'
-  const cacheKey = 'V4_RAW_' + url
-  
   if (kvAvailable) {
+    const cacheKey = 'CACHE_' + url
     const cached = await KV.get(cacheKey)
     if (cached) {
       try { return JSON.parse(cached) } catch (e) { await KV.delete(cacheKey) }
@@ -81,18 +70,20 @@ async function getCachedJSON(url) {
     const res = await fetch(url)
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`)
     const data = await res.json()
-    // 缓存设置为 60 秒，确保配置更新能够较快生效
-    await KV.put(cacheKey, JSON.stringify(data), { expirationTtl: 60 })
+    await KV.put(cacheKey, JSON.stringify(data), { expirationTtl: 600 })
     return data
+  } else {
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`Fetch failed: ${res.status}`)
+    return await res.json()
   }
-  const res = await fetch(url)
-  return await res.json()
 }
 
 async function handleRequest(request) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS_HEADERS })
-
+  
   const reqUrl = new URL(request.url)
+  const pathname = reqUrl.pathname
   const targetUrlParam = reqUrl.searchParams.get('url')
   const formatParam = reqUrl.searchParams.get('format')
   const sourceParam = reqUrl.searchParams.get('source')
@@ -101,23 +92,20 @@ async function handleRequest(request) {
   const currentOrigin = reqUrl.origin
   const defaultPrefix = currentOrigin + '/?url='
 
-  if (reqUrl.pathname === '/health') return new Response('OK', { headers: CORS_HEADERS })
+  if (pathname === '/health') return new Response('OK', { status: 200, headers: CORS_HEADERS })
   if (targetUrlParam) return handleProxyRequest(request, targetUrlParam, currentOrigin)
-  
+
   if (formatParam !== null) {
     try {
-      const config = FORMAT_CONFIG[formatParam]
-      if (!config) return errorResponse('Invalid format', {}, 400)
-      const sourceCfg = JSON_SOURCES[sourceParam] || JSON_SOURCES['full']
-      
-      const data = await getCachedJSON(sourceCfg.url)
-      const newData = config.proxy ? addOrReplacePrefix(data, prefixParam || defaultPrefix) : data
-      
+      const sourceConfig = JSON_SOURCES[sourceParam] || JSON_SOURCES['full']
+      const data = await getCachedJSON(sourceConfig.url)
+      const isProxy = formatParam === '1' || formatParam === 'proxy'
+      const newData = isProxy ? addOrReplacePrefix(data, prefixParam || defaultPrefix) : data
       return new Response(JSON.stringify(newData), {
-        headers: { 'Content-Type': 'application/json;charset=UTF-8', ...CORS_HEADERS }
+        headers: { 'Content-Type': 'application/json;charset=UTF-8', ...CORS_HEADERS },
       })
     } catch (err) {
-      return errorResponse('Internal Error', { message: err.message }, 500)
+      return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: CORS_HEADERS })
     }
   }
 
@@ -125,7 +113,7 @@ async function handleRequest(request) {
 }
 
 async function handleProxyRequest(request, targetUrlParam, currentOrigin) {
-  if (targetUrlParam.startsWith(currentOrigin)) return errorResponse('Loop detected', {}, 400)
+  if (targetUrlParam.startsWith(currentOrigin)) return new Response('Loop detected', { status: 400 })
   try {
     const proxyRequest = new Request(targetUrlParam, {
       method: request.method,
@@ -139,10 +127,11 @@ async function handleProxyRequest(request, targetUrlParam, currentOrigin) {
     }
     return new Response(response.body, { status: response.status, headers: responseHeaders })
   } catch (err) {
-    return errorResponse('Proxy Error', { message: err.message }, 502)
+    return new Response(err.message, { status: 502 })
   }
 }
 
+// 你的现代 UI 处理函数
 async function handleHomePage(currentOrigin, defaultPrefix) {
   const html = `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -255,14 +244,6 @@ async function handleHomePage(currentOrigin, defaultPrefix) {
 </html>`
 
   return new Response(html, { 
-    status: 200, 
     headers: { 'Content-Type': 'text/html; charset=utf-8', ...CORS_HEADERS } 
-  })
-}
-
-function errorResponse(error, data = {}, status = 400) {
-  return new Response(JSON.stringify({ error, ...data }), {
-    status,
-    headers: { 'Content-Type': 'application/json; charset=utf-8', ...CORS_HEADERS }
   })
 }
