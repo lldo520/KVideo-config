@@ -77,90 +77,88 @@ const queueRun = async (tasks, limit) => {
     return results;
 };
 
-// === 4. 主逻辑 ===
+// === 主逻辑 ===
 (async () => {
-    console.log(`⏳ 正在按照原版格式检测 ${apiEntries.length} 个接口...`);
+  console.log("⏳ 正在检测 API 与搜索功能可用性（队列并发 + 重试机制）...");
 
-    const todayResults = await queueRun(apiEntries.map(s => async () => {
-        if (s.disabled) return { api: s.api, success: false, searchStatus: "禁用" };
-        const ok = await safeGet(s.api);
-        const searchStatus = (ok && ENABLE_SEARCH_TEST) ? await testSearch(s.api, SEARCH_KEYWORD) : "-";
-        return { api: s.api, success: ok, searchStatus };
-    }), CONCURRENT_LIMIT);
+  const tasks = apiEntries.map(({ name, api, disabled }) => async () => {
+    if (disabled) return { name, api, disabled, success: false, searchStatus: "无法搜索" };
 
-    history.push({ date: new Date().toISOString().slice(0, 10), results: todayResults });
-    if (history.length > MAX_DAYS) history.shift();
+    const ok = await safeGet(api);
+    const searchStatus = ENABLE_SEARCH_TEST ? await testSearch(api, SEARCH_KEYWORD) : "-";
+    return { name, api, disabled, success: ok, searchStatus };
+  });
 
-    // === 统计分析 ===
-    const statsList = apiEntries.map(s => {
-        let ok = 0, fail = 0, streak = 0;
-        
-        // 统计历史成功/失败
-        history.forEach(day => {
-            const r = day.results.find(x => x.api === s.api);
-            if (r) { r.success ? ok++ : fail++; }
-        });
+  const todayResults = await queueRun(tasks, CONCURRENT_LIMIT);
 
-        // 计算当前连跪
-        for (let i = history.length - 1; i >= 0; i--) {
-            const r = history[i].results.find(x => x.api === s.api);
-            if (r && r.success) break;
-            streak++;
-        }
+  const todayRecord = {
+    date: new Date().toISOString().slice(0, 10),
+    keyword: SEARCH_KEYWORD,
+    results: todayResults,
+  };
 
-        // 7天趋势
-        const trend = history.slice(-7).map(day => {
-            const r = day.results.find(x => x.api === s.api);
-            return r ? (r.success ? "✅" : "❌") : "-";
-        }).join("");
+  history.push(todayRecord);
+  if (history.length > MAX_DAYS) history = history.slice(-MAX_DAYS);
 
-        const latest = todayResults.find(r => r.api === s.api);
-        const total = ok + fail;
-        const successRate = total > 0 ? ((ok / total) * 100).toFixed(1) + "%" : "-";
+  // === 统计和生成报告 ===
+  const stats = {};
+  for (const { name, api, detail, disabled } of apiEntries) {
+    stats[api] = { name, api, detail, disabled, ok: 0, fail: 0, fail_streak: 0, trend: "", searchStatus: "-", status: "❌" };
 
-        let status = "✅";
-        if (s.disabled) status = "🚫";
-        else if (streak >= WARN_STREAK) status = "🚨";
-        else if (!latest?.success) status = "❌";
-
-        return { 
-            ...s, status, ok, fail, successRate, trend, 
-            searchStatus: latest?.searchStatus || "❌" 
-        };
-    }).sort((a, b) => {
-        const order = { "🚨": 1, "❌": 2, "✅": 3, "🚫": 4 };
-        return order[a.status] - order[b.status];
-    });
-
-    // === 5. 生成原版 Markdown 格式 ===
-    let md = `# 源接口健康检测报告\n\n最近更新时间：${nowCST}\n\n`;
-    md += `**总源数:** ${apiEntries.length} | **检测关键词:** ${SEARCH_KEYWORD}\n\n`;
-    md += "| 状态 | 资源名称 | ID/备注 | API接口 | 搜索功能 | 成功 | 失败 | 成功率 | 最近7天趋势 |\n";
-    md += "|------|---------|---------|---------|---------|-----:|-----:|-------:|--------------|\n";
-
-    statsList.forEach(s => {
-        md += `| ${s.status} | ${s.name} | ${s.id} | [Link](${s.api}) | ${s.searchStatus} | ${s.ok} | ${s.fail} | ${s.successRate} | ${s.trend} |\n`;
-    });
-
-    md += `\n<details>\n<summary>📜 点击展开查看历史检测数据 (JSON)</summary>\n\n`;
-    md += "```json\n" + JSON.stringify(history, null, 2) + "\n```\n";
-    md += `</details>\n`;
-
-    // 写入文件
-    fs.writeFileSync(REPORT_PATH, md);
-
-    // 同步到 README.md
-    if (fs.existsSync(README_PATH)) {
-        let readme = fs.readFileSync(README_PATH, "utf-8");
-        const startTag = "";
-        const endTag = "";
-        const regex = new RegExp(`${startTag}[\\s\\S]*${endTag}`);
-        
-        // 首页仅显示表格部分，不显示历史 JSON 详情
-        const tableOnly = md.split("<details>")[0];
-        const newReadme = readme.replace(regex, `${startTag}\n\n${tableOnly}\n${endTag}`);
-        fs.writeFileSync(README_PATH, newReadme);
+    for (const day of history) {
+      const rec = day.results.find((x) => x.api === api);
+      if (!rec) continue;
+      if (rec.success) stats[api].ok++;
+      else stats[api].fail++;
     }
 
+    let streak = 0;
+    for (let i = history.length - 1; i >= 0; i--) {
+      const rec = history[i].results.find((x) => x.api === api);
+      if (!rec) continue;
+      if (rec.success) break;
+      streak++;
+    }
+    const total = stats[api].ok + stats[api].fail;
+    stats[api].successRate = total > 0 ? ((stats[api].ok / total) * 100).toFixed(1) + "%" : "-";
+
+    const recent = history.slice(-7);
+    stats[api].trend = recent.map(day => {
+      const r = day.results.find(x => x.api === api);
+      return r ? (r.success ? "✅" : "❌") : "-";
+    }).join("");
+
+    const latest = todayResults.find(x => x.api === api);
+    if (latest) stats[api].searchStatus = latest.searchStatus;
+
+    if (disabled) stats[api].status = "🚫";
+    else if (streak >= WARN_STREAK) stats[api].status = "🚨";
+    else if (latest?.success) stats[api].status = "✅";
+  }
+
+  // === 生成 Markdown 报告 ===
+  let md = `# 源接口健康检测报告\n\n`;
+  md += `最近更新时间：${now}\n\n`;
+  md += `**总源数:** ${apiEntries.length} | **检测关键词:** ${SEARCH_KEYWORD}\n\n`;
+  md += "| 状态 | 资源名称 | 地址 | API | 搜索功能 | 成功次数 | 失败次数 | 成功率 | 最近7天趋势 |\n";
+  md += "|------|---------|-----|-----|---------|---------:|--------:|-------:|--------------|\n";
+
+  const sorted = Object.values(stats).sort((a, b) => {
+    const order = { "🚨": 1, "❌": 2, "✅": 3, "🚫": 4 };
+    return order[a.status] - order[b.status];
+  });
+
+  for (const s of sorted) {
+    const detailLink = s.detail.startsWith("http") ? `[Link](${s.detail})` : s.detail;
+    const apiLink = `[Link](${s.api})`;
+    md += `| ${s.status} | ${s.name} | ${detailLink} | ${apiLink} | ${s.searchStatus} | ${s.ok} | ${s.fail} | ${s.successRate} | ${s.trend} |\n`;
+  }
+
+  md += `\n<details>\n<summary>📜 点击展开查看历史检测数据 (JSON)</summary>\n\n`;
+  md += "```json\n" + JSON.stringify(history, null, 2) + "\n```\n";
+  md += `</details>\n`;
+
+
+  fs.writeFileSync(REPORT_PATH, md, "utf-8");
   console.log("📄 报告已生成:", REPORT_PATH);
 })();
