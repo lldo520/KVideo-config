@@ -13,117 +13,105 @@ const TIMEOUT_MS = 10000;
 const CONCURRENT_LIMIT = 5; 
 const MAX_RETRY = 2;
 
-// 污染词库：如果搜索结果包含这些词，视为无效源
-const POLLUTED_KEYWORDS = ["广告", "博彩", "注册", "联系Q", "维护", "加群"];
-
 if (!fs.existsSync(CONFIG_PATH)) {
-    console.error("❌ 配置文件不存在:", CONFIG_PATH);
+    console.error("❌ 配置文件不存在");
     process.exit(1);
 }
 
 const configArray = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf-8"));
 
-const delay = ms => new Promise(r => setTimeout(r, ms));
-
-/**
- * 核心检测逻辑
- */
-async function testSource(item) {
-    const url = item.baseUrl;
-    let errorReason = "";
-
-    for (let attempt = 1; attempt <= MAX_RETRY; attempt++) {
-        try {
-            // 1. 基础连通性测试 (超时控制)
-            const ping = await axios.get(url, { timeout: TIMEOUT_MS });
-            if (ping.status !== 200) throw new Error(`HTTP_${ping.status}`);
-
-            // 2. 搜索可用性测试 (ac=detail 获取带名称的列表)
-            const searchUrl = `${url}?ac=detail&wd=${encodeURIComponent(SEARCH_KEYWORD)}`;
-            const res = await axios.get(searchUrl, { timeout: TIMEOUT_MS });
-            
-            if (!res.data || !res.data.list) {
-                errorReason = "返回格式非法";
-            } else if (res.data.list.length === 0) {
-                errorReason = "搜索无结果";
-            } else {
-                // 3. 内容污染验证
-                const sampleName = res.data.list[0].vod_name || "";
-                if (POLLUTED_KEYWORDS.some(k => sampleName.includes(k))) {
-                    errorReason = "检测到广告污染源";
-                }
-            }
-
-            if (errorReason) throw new Error(errorReason);
-            return { success: true, reason: "正常" };
-
-        } catch (e) {
-            errorReason = e.message;
-            if (attempt < MAX_RETRY) await delay(1000);
-        }
-    }
-    return { success: false, reason: errorReason };
+//读取历史记录用于计算趋势（从 report.md 提取旧 JSON）
+let history = [];
+if (fs.existsSync(REPORT_PATH)) {
+    const old = fs.readFileSync(REPORT_PATH, "utf-8");
+    const match = old.match(/```json\n([\s\S]+?)\n```/);
+    if (match) { try { history = JSON.parse(match[1]); } catch (e) {} }
 }
 
-/**
- * 并发控制执行器
- */
-async function queueRun(items, limit) {
-    const results = [];
-    const running = new Set();
-    for (const item of items) {
-        if (running.size >= limit) await Promise.race(running);
-        const p = testSource(item).then(res => ({ ...item, ...res }));
-        running.add(p);
-        p.finally(() => running.delete(p));
-        results.push(p);
+const delay = ms => new Promise(r => setTimeout(r, ms));
+
+async function testSource(item) {
+    const url = item.baseUrl;
+    for (let attempt = 1; attempt <= MAX_RETRY; attempt++) {
+        try {
+            const res = await axios.get(`${url}?ac=detail&wd=${encodeURIComponent(SEARCH_KEYWORD)}`, { timeout: TIMEOUT_MS });
+            if (res.data && res.data.list && res.data.list.length > 0) {
+                return { success: true, reason: "✅" };
+            }
+            return { success: false, reason: res.data.list ? "无结果" : "格式错误" };
+        } catch (e) {
+            if (attempt === MAX_RETRY) return { success: false, reason: "连接超时" };
+            await delay(1000);
+        }
     }
-    return Promise.all(results);
 }
 
 (async () => {
-    console.log(`🚀 开始扫描 API 质量... 目标关键词: ${SEARCH_KEYWORD}`);
+    console.log(`⏳ 正在检测: ${SEARCH_KEYWORD}`);
+    const tasks = configArray.map(item => () => testSource(item).then(res => ({ ...item, ...res })));
     
-    const rawResults = await queueRun(configArray, CONCURRENT_LIMIT);
+    // 队列执行
+    const results = [];
+    const pool = tasks.map(t => t());
+    const todayResults = await Promise.all(pool);
 
-    // 1. 构建 Adult.json (保留所有，标记异常)
-    const adultData = rawResults.map(item => {
-        const { success, reason, ...cleanItem } = item;
-        const finalItem = {
-            id: cleanItem.id,
-            name: cleanItem.name,
-            baseUrl: cleanItem.baseUrl,
-            group: cleanItem.group || "normal",
-            enabled: cleanItem.enabled !== false // 默认 true
-        };
+    // 更新历史
+    history.push({ date: new Date().toISOString().slice(0, 10), results: todayResults.map(r=>({api:r.baseUrl, success:r.success})) });
+    if (history.length > 30) history = history.slice(-30);
 
-        if (!success) {
-            finalItem.enabled = false;
-            finalItem._comment = `异常记录: ${reason}`;
+    // --- 计算统计与优先级 ---
+    const stats = todayResults.map(item => {
+        const historyEntries = history.map(h => h.results.find(x => x.api === item.baseUrl)).filter(Boolean);
+        const okCount = historyEntries.filter(h => h.success).length;
+        const rate = (okCount / historyEntries.length) * 100;
+        
+        // 趋势计算 (最近7次)
+        const trend = history.slice(-7).map(h => {
+            const r = h.results.find(x => x.api === item.baseUrl);
+            return r ? (r.success ? "✅" : "❌") : "-";
+        }).join("");
+
+        // 核心：动态优先级算法
+        let priority = 50; // 默认中等
+        if (item.success) {
+            if (rate >= 100) priority = 1;
+            else if (rate >= 90) priority = 5;
+            else if (rate >= 80) priority = 10;
+        } else {
+            priority = 99; // 挂掉的排最后
         }
-        return finalItem;
+
+        return { ...item, ok: okCount, fail: historyEntries.length - okCount, rate: rate.toFixed(1) + "%", trend, priority };
     });
 
-    fs.writeFileSync(ADULT_JSON_PATH, JSON.stringify(adultData, null, 2), "utf-8");
+    // --- 1. 生成 adult.json ---
+    const adultData = stats.map(s => ({
+        id: s.id,
+        name: s.name,
+        baseUrl: s.baseUrl,
+        group: s.group || "normal",
+        enabled: s.success,
+        priority: s.priority,
+        ...(s.success ? {} : { _comment: `异常: ${s.reason}` })
+    })).sort((a, b) => a.priority - b.priority);
+    fs.writeFileSync(ADULT_JSON_PATH, JSON.stringify(adultData, null, 2));
 
-    // 2. 构建 Lite.json (严选模式)
-    const liteData = adultData.filter(item => {
-        const isAdult = item.group === "adult";
-        const isBroken = item.enabled === false || item._comment;
-        return !isAdult && !isBroken;
+    // --- 2. 生成 lite.json ---
+    const liteData = adultData.filter(s => s.group !== "adult" && s.enabled);
+    fs.writeFileSync(LITE_JSON_PATH, JSON.stringify(liteData, null, 2));
+
+    // --- 3. 生成 Markdown 报告 (保留历史样式) ---
+    const nowCST = new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().replace("T", " ").slice(0, 16) + " CST";
+    let md = `# API 健康报告\n\n## 状态更新：${nowCST}\n\n`;
+    md += `| 状态 | 资源名称 | API接口 | 优先级 | 成功率 | 最近7天趋势 |\n`;
+    md += `| :--- | :--- | :--- | :--- | :--- | :--- |\n`;
+    
+    stats.sort((a, b) => a.priority - b.priority).forEach(s => {
+        md += `| ${s.success?'✅':'❌'} | ${s.name} | [Link](${s.baseUrl}) | ${s.priority} | ${s.rate} | ${s.trend} |\n`;
     });
 
-    fs.writeFileSync(LITE_JSON_PATH, JSON.stringify(liteData, null, 2), "utf-8");
+    md += `\n<details><summary>📜 历史数据</summary>\n\n\`\`\`json\n${JSON.stringify(history, null, 2)}\n\`\`\`\n</details>\n`;
+    fs.writeFileSync(REPORT_PATH, md);
 
-    // 3. 生成 Markdown 简报
-    const cstTime = new Date(Date.now() + 8 * 60 * 60 * 1000).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
-    let md = `# ⚙️ API 自动化检测报告\n\n`;
-    md += `> 更新时间: ${cstTime} (北京时间)\n\n`;
-    md += `| 状态 | 资源名称 | 分组 | 检测结果 |\n| :--- | :--- | :--- | :--- |\n`;
-    rawResults.forEach(r => {
-        md += `| ${r.success ? '✅' : '❌'} | ${r.name} | ${r.group} | ${r.reason} |\n`;
-    });
-    fs.writeFileSync(REPORT_PATH, md, "utf-8");
-
-    console.log("✨ 任务完成：文件已同步更新。");
+    console.log("✨ 处理完毕！");
 })();
