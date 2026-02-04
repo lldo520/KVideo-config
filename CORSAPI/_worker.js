@@ -2,339 +2,302 @@
 export default {
   async fetch(request, env, ctx) {
     if (env && env.KV && typeof globalThis.KV === 'undefined') {
-      globalThis.KV = env.KV; // 注入 KV 绑定
+      globalThis.KV = env.KV; 
     }
+    // 注入允许代理的域名白名单（可选，增强安全性）
+    globalThis.ALLOWED_DOMAINS = env.ALLOWED_DOMAINS || ""; 
     return handleRequest(request);
   }
 }
 
-// 常量配置
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  'Access-Control-Max-Age': '86400',
+  'Cache-Control': 'public, max-age=3600'
 };
 
 const EXCLUDE_HEADERS = new Set([
   'content-encoding', 'content-length', 'transfer-encoding',
-  'connection', 'keep-alive', 'set-cookie', 'set-cookie2'
-]); // 代理时需剥离的响应头
+  'connection', 'keep-alive', 'set-cookie', 'set-cookie2', 'cf-ray', 'x-forwarded-for'
+]);
 
 const JSON_SOURCES = {
-  'lite': {
-    name: '精简版 (Lite)',
-    url: 'https://raw.githubusercontent.com/puppet680/KVideo-config/refs/heads/main/lite.json'
-  },
-  'adult': {
-    name: '精简成人版 (Adult)',
-    url: 'https://raw.githubusercontent.com/puppet680/KVideo-config/refs/heads/main/adult.json'
-  },
-  'full': {
-    name: '完整版 (Full)',
-    url: 'https://raw.githubusercontent.com/puppet680/KVideo-config/refs/heads/main/KVideo-config.json'
-  }
+  'lite': { name: '精简版 (Lite)', url: 'https://raw.githubusercontent.com/puppet680/KVideo-config/main/lite.json' },
+  'adult': { name: '精简成人版 (Adult)', url: 'https://raw.githubusercontent.com/puppet680/KVideo-config/main/adult.json' },
+  'full': { name: '完整版 (Full)', url: 'https://raw.githubusercontent.com/puppet680/KVideo-config/main/KVideo-config.json' }
 };
 
-const FORMAT_CONFIG = {
-  '0': { proxy: false },
-  'raw': { proxy: false },
-  '1': { proxy: true },
-  'proxy': { proxy: true }
-};
-
-// 🔑 域名标识提取器
+// 🔑 域名标识提取优化：增加更鲁棒的正则
 function extractSourceId(apiUrl) {
   try {
-    const url = new URL(apiUrl);
-    const hostname = url.hostname;
-    const parts = hostname.split('.');
-    if (parts.length >= 3 && ['caiji', 'api', 'cj', 'www'].includes(parts[0])) {
-      return parts[parts.length - 2].toLowerCase().replace(/[^a-z0-9]/g, '');
-    }
-    return parts[0].toLowerCase().replace(/zyapi$|zy$|api$/, '').replace(/[^a-z0-9]/g, '') || 'source';
+    const hostname = new URL(apiUrl).hostname;
+    const match = hostname.match(/([^.]+)\.(?:com|net|org|cn|top|xyz|vip|cc|icu)$|([^.]+)$/);
+    let id = match ? (match[1] || match[2]) : 'source';
+    return id.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8);
   } catch {
-    return 'source' + Math.random().toString(36).substr(2, 6);
+    return 'src' + Math.random().toString(36).substr(2, 4);
   }
 }
 
-// 🛠️ 处理 JSON 结构：递归修改 baseUrl
+// 🛠️ 递归处理优化：增加对多层嵌套的防御
 function processJsonStructure(obj, newPrefix) {
-  if (typeof obj !== 'object' || obj === null) return obj;
-  if (Array.isArray(obj)) return obj.map(item => processJsonStructure(item, newPrefix));
-  const newObj = {};
-  for (const key in obj) {
-    if (key === 'baseUrl' && typeof obj[key] === 'string') {
-      let apiUrl = obj[key];
-      const urlIndex = apiUrl.indexOf('?url=');
-      if (urlIndex !== -1) apiUrl = apiUrl.slice(urlIndex + 5);
-      if (!apiUrl.startsWith(newPrefix)) {
-        const sourceId = extractSourceId(apiUrl);
-        const baseUrlPath = newPrefix.replace(/\/?\?url=$/, ''); 
-        apiUrl = `${baseUrlPath}/p/${sourceId}?url=${encodeURIComponent(apiUrl)}`;
-      }
-      newObj[key] = apiUrl;
-    } else {
-      newObj[key] = processJsonStructure(obj[key], newPrefix);
-    }
-  }
-  return newObj;
-}
+  const seen = new WeakSet();
+  const walk = (item) => {
+    if (typeof item !== 'object' || item === null) return item;
+    if (seen.has(item)) return item;
+    seen.add(item);
 
-// KV 缓存逻辑
-async function getCachedJSON(url) {
-  const kvAvailable = typeof KV !== 'undefined' && KV && typeof KV.get === 'function';
-  if (kvAvailable) {
-    const cacheKey = 'CACHE_' + url;
-    const cached = await KV.get(cacheKey);
-    if (cached) {
-      try { return JSON.parse(cached); } catch (e) { await KV.delete(cacheKey); }
-    }
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
-    const data = await res.json();
-    await KV.put(cacheKey, JSON.stringify(data), { expirationTtl: 600 });
-    return data;
-  }
-  const res = await fetch(url);
-  return await res.json();
-}
-
-// 主请求处理
-async function handleRequest(request) {
-  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS_HEADERS });
-  
-  const reqUrl = new URL(request.url);
-  const pathname = reqUrl.pathname;
-  const targetUrlParam = reqUrl.searchParams.get('url');
-  const formatParam = reqUrl.searchParams.get('format');
-  const prefixParam = reqUrl.searchParams.get('prefix');
-  const sourceParam = reqUrl.searchParams.get('source');
-  const currentOrigin = reqUrl.origin;
-  const defaultPrefix = currentOrigin + '/?url=';
-
-  if (pathname === '/health') return new Response('OK', { status: 200, headers: CORS_HEADERS });
-  
-  // 转发代理请求
-  if ((pathname.startsWith('/p/') || pathname === '/') && targetUrlParam) {
-    return handleProxyRequest(request, targetUrlParam, currentOrigin);
-  }
-  
-  // 订阅转换请求
-  if (formatParam !== null) {
-    return handleFormatRequest(formatParam, sourceParam, prefixParam, defaultPrefix);
-  }
-  
-  // 首页 UI
-  return handleHomePage(currentOrigin, defaultPrefix);
-}
-
-// 代理请求转发优化：处理编码与数据清洗
-async function handleProxyRequest(request, targetUrlParam, currentOrigin) {
-  try {
-    let fullTargetUrl = decodeURIComponent(targetUrlParam);
-    const targetURL = new URL(fullTargetUrl);
+    if (Array.isArray(item)) return item.map(walk);
     
-    // 复制除 url 外的其他参数
-    const reqUrl = new URL(request.url);
-    for (const [key, value] of reqUrl.searchParams) {
-      if (key !== 'url') targetURL.searchParams.append(key, value);
+    const newObj = {};
+    for (const [key, value] of Object.entries(item)) {
+      if (key === 'baseUrl' && typeof value === 'string') {
+        let apiUrl = value.includes('?url=') ? value.split('?url=')[1] : value;
+        const sourceId = extractSourceId(apiUrl);
+        const baseUrlPath = newPrefix.split('?url=')[0];
+        newObj[key] = `${baseUrlPath}p/${sourceId}?url=${encodeURIComponent(apiUrl)}`;
+      } else {
+        newObj[key] = walk(value);
+      }
     }
+    return newObj;
+  };
+  return walk(obj);
+}
 
-    const response = await fetch(new Request(targetURL.toString(), {
+async function getCachedJSON(url) {
+  const cacheKey = `JSON_CACHE_${url}`;
+  if (typeof KV !== 'undefined') {
+    const cached = await KV.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+  }
+  
+  const res = await fetch(url, { headers: { 'User-Agent': 'Cloudflare-Worker' } });
+  if (!res.ok) throw new Error(`GitHub 访问失败: ${res.status}`);
+  const data = await res.json();
+  
+  if (typeof KV !== 'undefined') {
+    await KV.put(cacheKey, JSON.stringify(data), { expirationTtl: 600 });
+  }
+  return data;
+}
+
+async function handleRequest(request) {
+  const reqUrl = new URL(request.url);
+  const { pathname, searchParams, origin } = reqUrl;
+
+  if (request.method === 'OPTIONS') return new Response(null, { headers: CORS_HEADERS });
+  if (pathname === '/health') return new Response('OK');
+
+  // 1. 处理代理请求 /p/{id}?url=...
+  if ((pathname.startsWith('/p/') || pathname === '/') && searchParams.has('url')) {
+    return handleProxyRequest(request, searchParams.get('url'));
+  }
+
+  // 2. 处理订阅格式转换
+  if (searchParams.has('format')) {
+    const source = searchParams.get('source') || 'full';
+    const isProxy = searchParams.get('format') === '1';
+    try {
+      const data = await getCachedJSON(JSON_SOURCES[source].url);
+      const processed = isProxy ? processJsonStructure(data, `${origin}/?url=`) : data;
+      return new Response(JSON.stringify(processed), {
+        headers: { 'Content-Type': 'application/json;charset=UTF-8', ...CORS_HEADERS }
+      });
+    } catch (e) {
+      return new Response(JSON.stringify({ error: e.message }), { status: 500 });
+    }
+  }
+
+  return handleHomePage(origin);
+}
+
+async function handleProxyRequest(request, targetUrl) {
+  try {
+    const decodedUrl = decodeURIComponent(targetUrl);
+    const targetURL = new URL(decodedUrl);
+
+    // 复制搜索参数 (除去 url)
+    const originalUrl = new URL(request.url);
+    originalUrl.searchParams.delete('url');
+    originalUrl.searchParams.forEach((v, k) => targetURL.searchParams.append(k, v));
+
+    const modifiedRequest = new Request(targetURL, {
       method: request.method,
       headers: request.headers,
-      body: request.method !== 'GET' && request.method !== 'HEAD' ? await request.arrayBuffer() : undefined,
-    }));
+      redirect: 'follow'
+    });
 
-    // 构建响应头
-    const responseHeaders = new Headers(CORS_HEADERS);
-    let contentType = response.headers.get('content-type') || 'application/json';
-    if (!contentType.includes('charset')) contentType += '; charset=utf-8';
-
+    const response = await fetch(modifiedRequest);
+    const newHeaders = new Headers(CORS_HEADERS);
+    
     for (const [key, value] of response.headers) {
-      if (!EXCLUDE_HEADERS.has(key.toLowerCase())) responseHeaders.set(key, value);
+      if (!EXCLUDE_HEADERS.has(key.toLowerCase())) newHeaders.set(key, value);
     }
-    responseHeaders.set('Content-Type', contentType);
 
-    // 数据清洗：解决 &nbsp; 和乱码问题
+    // 解决字符编码与乱码问题
+    let body = response.body;
+    const contentType = response.headers.get('content-type') || '';
     if (contentType.includes('json') || contentType.includes('text') || contentType.includes('xml')) {
       let text = await response.text();
-      // 移除多余的 HTML 实体字符（可选，视源站情况而定）
-      // text = text.replace(/&nbsp;/g, ' '); 
-      return new Response(text, { status: response.status, headers: responseHeaders });
+      text = text.replace(/&nbsp;/g, ' '); // 清洗不规范的空格
+      return new Response(text, { status: response.status, headers: newHeaders });
     }
 
-    return new Response(response.body, { status: response.status, headers: responseHeaders });
+    return new Response(body, { status: response.status, headers: newHeaders });
   } catch (err) {
-    return errorResponse('Proxy Error', { message: err.message }, 502);
+    return new Response(JSON.stringify({ error: 'Proxy Failed', message: err.message }), { status: 502 });
   }
 }
 
-// JSON 格式化输出
-async function handleFormatRequest(formatParam, sourceParam, prefixParam, defaultPrefix) {
-  try {
-    const config = FORMAT_CONFIG[formatParam];
-    if (!config) return errorResponse('Invalid format', { format: formatParam }, 400);
-    const sourceConfig = JSON_SOURCES[sourceParam] || JSON_SOURCES['full'];
-    const data = await getCachedJSON(sourceConfig.url);
-    const newData = config.proxy ? processJsonStructure(data, prefixParam || defaultPrefix) : data;
-    return new Response(JSON.stringify(newData), {
-      headers: { 'Content-Type': 'application/json;charset=UTF-8', ...CORS_HEADERS },
-    });
-  } catch (err) {
-    return errorResponse(err.message, {}, 500);
-  }
-}
-
-async function handleHomePage(currentOrigin, defaultPrefix) {
-  // 预生成表格行
-  const tableRows = Object.entries(JSON_SOURCES).map(([key, item]) => {
-    return `
-      <tr>
-        <td rowspan="2">
-          <div style="font-weight:600;color:#fff">${item.name}</div>
-          <span class="badge">${key}</span>
-        </td>
-        <td><span class="badge">原始 Raw</span></td>
-        <td><div class="copy-zone" onclick="quickCopy('${currentOrigin}/?format=0&source=${key}')">点击复制</div></td>
-      </tr>
-      <tr>
-        <td><span class="badge proxy-badge">代理 Proxy</span></td>
-        <td><div class="copy-zone" onclick="quickCopy('${currentOrigin}/?format=1&source=${key}')">点击复制</div></td>
-      </tr>`;
-  }).join('');
+async function handleHomePage(origin) {
+  const tableRows = Object.entries(JSON_SOURCES).map(([key, item]) => `
+    <div class="glass-card ${key === 'lite' ? 'border-cyan' : 'border-purple'}">
+      <div class="card-status">
+        <span class="pulse-dot ${key === 'lite' ? 'bg-cyan' : 'bg-purple'}"></span>
+        <span class="status-text">source=${key}</span>
+      </div>
+      <h2 class="card-title">${item.name}</h2>
+      <div class="button-group">
+        <button class="btn btn-outline" onclick="copy('${origin}/?format=0&source=${key}')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+          原始订阅
+        </button>
+        <button class="btn btn-glow" onclick="copy('${origin}/?format=1&source=${key}')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          代理加速
+        </button>
+      </div>
+    </div>
+  `).join('');
 
   const html = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>KVideo Config Nexus</title>
+  <title>KVideo Nexus Console</title>
   <style>
-    :root { 
-      --primary: #3b82f6; 
-      --bg: #0f172a; 
-      --card-bg: #1e293b;
-      --text: #f1f5f9; 
-      --text-mute: #94a3b8;
-      --border: #334155; 
-      --accent: #10b981;
-      --code-bg: #0f172a;
+    :root {
+      --bg: #05070a;
+      --card-bg: rgba(255, 255, 255, 0.03);
+      --cyan: #00f2ff;
+      --purple: #bc13fe;
+      --text: #e0e6ed;
     }
-    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); max-width: 900px; margin: 0 auto; padding: 40px 20px; line-height: 1.6; }
+    * { box-sizing: border-box; font-family: 'Inter', -apple-system, sans-serif; }
+    body {
+      background: var(--bg);
+      background-image: radial-gradient(circle at 50% -20%, #1a1f35, transparent);
+      color: var(--text);
+      margin: 0; padding: 40px 20px;
+      display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+    }
     .header { text-align: center; margin-bottom: 50px; }
-    .header h1 { font-size: 2.2rem; margin-bottom: 10px; background: linear-gradient(to right, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; }
+    .header h1 { 
+      font-size: 2.5rem; margin: 0; font-weight: 800;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .header p { color: #64748b; margin-top: 10px; font-size: 0.9rem; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; width: 100%; max-width: 900px; }
     
-    .card { background: var(--card-bg); border-radius: 16px; padding: 24px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); margin-bottom: 24px; border: 1px solid var(--border); }
-    h2 { font-size: 1.2rem; margin-top: 0; display: flex; align-items: center; gap: 10px; color: #fff; }
-    h2::before { content: ''; width: 4px; height: 18px; background: var(--primary); border-radius: 4px; }
-    
-    /* 介绍板块样式 */
-    .intro-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 15px; }
-    .intro-item { background: var(--code-bg); padding: 15px; border-radius: 10px; border: 1px solid var(--border); }
-    .intro-item h3 { font-size: 0.95rem; color: var(--primary); margin-top: 0; }
-    .intro-item p { font-size: 0.85rem; color: var(--text-mute); margin-bottom: 0; }
-    
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th { text-align: left; color: var(--text-mute); font-size: 0.8rem; padding: 12px; border-bottom: 1px solid var(--border); }
-    td { padding: 12px; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
-    
-    .badge { font-size: 11px; padding: 2px 8px; border-radius: 6px; background: #334155; color: #cbd5e1; }
-    .proxy-badge { background: rgba(16, 185, 129, 0.2); color: #34d399; }
-    
-    .copy-zone { cursor: pointer; background: var(--code-bg); padding: 10px; border-radius: 8px; font-family: monospace; font-size: 12px; color: var(--text-mute); text-align: center; border: 1px solid transparent; transition: 0.2s; word-break: break-all; }
-    .copy-zone:hover { border-color: var(--primary); color: var(--primary); }
-    
-    .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 8px 20px; border-radius: 50px; display: none; z-index: 100; font-size: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
-    code { font-family: monospace; color: #f472b6; background: rgba(244, 114, 182, 0.1); padding: 2px 4px; border-radius: 4px; }
+    .glass-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 24px; padding: 30px;
+      position: relative; overflow: hidden;
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .glass-card:hover { transform: translateY(-10px); background: rgba(255, 255, 255, 0.06); }
+    .border-cyan:hover { border-color: var(--cyan); box-shadow: 0 0 30px rgba(0, 242, 255, 0.1); }
+    .border-purple:hover { border-color: var(--purple); box-shadow: 0 0 30px rgba(188, 19, 254, 0.1); }
+
+    .card-status { display: flex; align-items: center; gap: 8px; margin-bottom: 15px; }
+    .status-text { font-size: 0.75rem; color: #94a3b8; font-family: monospace; }
+    .pulse-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .bg-cyan { background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
+    .bg-purple { background: var(--purple); box-shadow: 0 0 10px var(--purple); }
+
+    .card-title { font-size: 1.5rem; margin: 0 0 25px 0; font-weight: 700; letter-spacing: -0.5px; }
+
+    .button-group { display: flex; gap: 12px; }
+    .btn {
+      flex: 1; padding: 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-outline { background: transparent; border: 1px solid #334155; color: #fff; }
+    .btn-outline:hover { background: #334155; }
+    .btn-glow { 
+      background: #fff; color: #000; border: none;
+      box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+    }
+    .btn-glow:hover { transform: scale(1.05); }
+
+    .usage-card {
+      margin-top: 50px; width: 100%; max-width: 900px;
+      background: rgba(255, 255, 255, 0.02); border-radius: 20px; padding: 25px;
+      border: 1px dashed rgba(255, 255, 255, 0.1);
+    }
+    .usage-card h3 { font-size: 1rem; color: #94a3b8; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+    .usage-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; font-size: 0.8rem; color: #64748b; }
+    .usage-item code { color: var(--cyan); background: rgba(0, 242, 255, 0.05); padding: 2px 5px; border-radius: 4px; }
+
+    .toast {
+      position: fixed; bottom: 30px; background: rgba(255, 255, 255, 0.95); color: #000;
+      padding: 12px 25px; border-radius: 50px; font-weight: 700; font-size: 0.9rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: none; z-index: 100;
+    }
+
+    @media (max-width: 600px) {
+      .button-group { flex-direction: column; }
+    }
   </style>
 </head>
 <body>
-  <div id="toast" class="toast">复制成功</div>
-  
   <div class="header">
-    <h1>KVideo Config Nexus</h1>
-    <p style="color: var(--text-mute)">自动化接口中转、跨域绕过与 GitHub 配置增强工具</p>
+    <h1>KVideo Nexus</h1>
+    <p>Automated Distribution & Recursive Proxy Console</p>
   </div>
 
-  <div class="card">
-    <h2>📖 功能介绍</h2>
-    <div class="intro-grid">
-      <div class="intro-item">
-        <h3>🔄 递归代理转换</h3>
-        <p>自动识别 JSON 配置中的 <code>baseUrl</code>，并将其重写为经过本节点中转的链接，彻底解决资源站接口无法访问的问题。</p>
+  <div class="grid">${tableRows}</div>
+
+  <div class="usage-card">
+    <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg> 使用手册</h3>
+    <div class="usage-grid">
+      <div class="usage-item">
+        <strong>参数 <code>format</code></strong><br>
+        <code>1</code>：开启 Worker 递归代理加速<br>
+        <code>0</code>：直接使用源站原始链接
       </div>
-      <div class="intro-item">
-        <h3>🚀 GitHub 加速</h3>
-        <p>利用 Cloudflare 网络直连 GitHub Raw 资源，并配合 KV 级别缓存（600s），大幅提升订阅加载速度。</p>
+      <div class="usage-item">
+        <strong>参数 <code>source</code></strong><br>
+        <code>lite</code>：严选高成功率极速版<br>
+        <code>adult</code>：包含完整精简成人源
       </div>
-      <div class="intro-item">
-        <h3>🛡️ 跨域与清洗</h3>
-        <p>自动处理 CORS 跨域头，并剥离冗余的 Cookie 及编码头，确保播放器（如 TVBox）能稳定解析数据。</p>
+      <div class="usage-item">
+        <strong>万能代理</strong><br>
+        拼接 <code>?url=目标链接</code> 即可通过此节点中转任何 API 或资源。
       </div>
     </div>
   </div>
 
-  <div class="card">
-    <h2>📦 快捷订阅源</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>配置版本</th>
-          <th>链接类型</th>
-          <th>操作 (点击复制)</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${tableRows}
-      </tbody>
-    </table>
-  </div>
-
-  <div class="card">
-    <h2>🚀 基础代理用法</h2>
-    <p style="color: var(--text-mute); font-size: 0.9rem; margin-bottom: 15px;">直接将需要加速的 API 或图片链接拼接在下方前缀后：</p>
-    <div class="copy-zone" onclick="quickCopy('${defaultPrefix}')">
-      ${defaultPrefix}https://example.com/api.php
-    </div>
-  </div>
+  <div id="toast" class="toast">COPIED TO CLIPBOARD!</div>
 
   <script>
-    function showToast(msg) {
-      const t = document.getElementById('toast');
-      t.innerText = msg;
-      t.style.display = 'block';
-      setTimeout(() => t.style.display = 'none', 2000);
-    }
-
-    async function quickCopy(text) {
-      try {
-        await navigator.clipboard.writeText(text);
-        showToast('链接已复制到剪贴板');
-      } catch (err) {
-        const input = document.createElement('input');
-        input.value = text;
-        document.body.appendChild(input);
-        input.select();
-        document.execCommand('copy');
-        document.body.removeChild(input);
-        showToast('链接已复制到剪贴板');
-      }
+    function copy(url) {
+      navigator.clipboard.writeText(url).then(() => {
+        const t = document.getElementById('toast');
+        t.style.display = 'block';
+        setTimeout(() => t.style.display = 'none', 2000);
+      });
     }
   </script>
 </body>
 </html>`;
 
-  return new Response(html, {
-    status: 200,
-    headers: { 'Content-Type': 'text/html; charset=utf-8', ...CORS_HEADERS }
-  });
-}
-
-function errorResponse(error, data = {}, status = 400) {
-  return new Response(JSON.stringify({ error, ...data }), {
-    status,
-    headers: { 'Content-Type': 'application/json; charset=utf-8', ...CORS_HEADERS }
-  });
+  return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 }
