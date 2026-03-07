@@ -373,7 +373,7 @@
     "baseUrl": "https://xzybb2.com/api.php/provide/vod",
     "group": "premium",
     "enabled": false,
-    "priority": 112,
+    "priority": 113,
     "_comment": "超时/宕机"
   },
   {
@@ -382,7 +382,7 @@
     "baseUrl": "https://api.guangsuapi.com/api.php/provide/vod",
     "group": "normal",
     "enabled": false,
-    "priority": 113,
+    "priority": 114,
     "_comment": "接口解析错误"
   },
   {
@@ -391,7 +391,7 @@
     "baseUrl": "https://hhzyapi.com/api.php/provide/vod",
     "group": "normal",
     "enabled": false,
-    "priority": 126,
+    "priority": 127,
     "_comment": "接口解析错误"
   },
   {
@@ -473,6 +473,6 @@
     "group": "premium",
     "enabled": false,
     "priority": 130,
-    "_comment": "超时/宕机"
+    "_comment": "接口解析错误"
   }
 ]
