@@ -144,14 +144,6 @@
     "priority": 1
   },
   {
-    "id": "ryzy",
-    "name": "🎬如意资源",
-    "baseUrl": "https://cj.rycjapi.com/api.php/provide/vod",
-    "group": "normal",
-    "enabled": true,
-    "priority": 1
-  },
-  {
     "id": "maoyan",
     "name": "🎬猫眼资源",
     "baseUrl": "https://api.maoyanapi.top/api.php/provide/vod",
@@ -165,7 +157,15 @@
     "baseUrl": "https://jinyingzy.com/api.php/provide/vod",
     "group": "normal",
     "enabled": true,
-    "priority": 10
+    "priority": 5
+  },
+  {
+    "id": "piaoling",
+    "name": "🎬飘零资源",
+    "baseUrl": "https://p2100.net/api.php/provide/vod",
+    "group": "normal",
+    "enabled": true,
+    "priority": 5
   },
   {
     "id": "uku",
