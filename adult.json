@@ -364,8 +364,9 @@
     "name": "🔞豆豆资源",
     "baseUrl": "https://api.douapi.cc/api.php/provide/vod",
     "group": "premium",
-    "enabled": true,
-    "priority": 10
+    "enabled": false,
+    "priority": 101,
+    "_comment": "超时/宕机"
   },
   {
     "id": "xing",
@@ -373,7 +374,7 @@
     "baseUrl": "https://xzybb2.com/api.php/provide/vod",
     "group": "premium",
     "enabled": false,
-    "priority": 121,
+    "priority": 122,
     "_comment": "超时/宕机"
   },
   {
@@ -382,7 +383,7 @@
     "baseUrl": "https://api.guangsuapi.com/api.php/provide/vod",
     "group": "normal",
     "enabled": false,
-    "priority": 122,
+    "priority": 123,
     "_comment": "接口解析错误"
   },
   {
