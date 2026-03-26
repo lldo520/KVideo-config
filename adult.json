@@ -336,6 +336,14 @@
     "priority": 5
   },
   {
+    "id": "lajiao",
+    "name": "🔞辣椒资源",
+    "baseUrl": "https://apilj.com/api.php/provide/vod",
+    "group": "premium",
+    "enabled": true,
+    "priority": 5
+  },
+  {
     "id": "uku",
     "name": "🎬U酷影视",
     "baseUrl": "https://api.ukuapi88.com/api.php/provide/vod",
@@ -352,21 +360,12 @@
     "priority": 10
   },
   {
-    "id": "lajiao",
-    "name": "🔞辣椒资源",
-    "baseUrl": "https://apilj.com/api.php/provide/vod",
-    "group": "premium",
-    "enabled": false,
-    "priority": 101,
-    "_comment": "超时/宕机"
-  },
-  {
     "id": "doudou",
     "name": "🔞豆豆资源",
     "baseUrl": "https://api.douapi.cc/api.php/provide/vod",
     "group": "premium",
     "enabled": false,
-    "priority": 110,
+    "priority": 111,
     "_comment": "超时/宕机"
   },
   {
