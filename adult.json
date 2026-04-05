@@ -296,6 +296,14 @@
     "priority": 5
   },
   {
+    "id": "heiliao",
+    "name": "🔞黑料资源",
+    "baseUrl": "https://www.heiliaozyapi.com/api.php/provide/vod",
+    "group": "premium",
+    "enabled": true,
+    "priority": 5
+  },
+  {
     "id": "baiwan",
     "name": "🔞百万资源",
     "baseUrl": "https://api.bwzyz.com/api.php/provide/vod",
@@ -363,14 +371,6 @@
     "id": "aosika",
     "name": "🔞-奥斯卡-",
     "baseUrl": "https://aosikazy.com/api.php/provide/vod",
-    "group": "premium",
-    "enabled": true,
-    "priority": 10
-  },
-  {
-    "id": "heiliao",
-    "name": "🔞黑料资源",
-    "baseUrl": "https://www.heiliaozyapi.com/api.php/provide/vod",
     "group": "premium",
     "enabled": false,
     "priority": 101,
