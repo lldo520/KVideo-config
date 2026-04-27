@@ -56,6 +56,14 @@
     "priority": 5
   },
   {
+    "id": "liangzi",
+    "name": "🎬量子资源",
+    "baseUrl": "https://cj.lzcaiji.com/api.php/provide/vod",
+    "group": "normal",
+    "enabled": true,
+    "priority": 5
+  },
+  {
     "id": "360zy",
     "name": "🎬360 资源",
     "baseUrl": "https://360zyzz.com/api.php/provide/vod",
@@ -99,14 +107,6 @@
     "id": "zuida",
     "name": "🎬最大资源",
     "baseUrl": "https://api.zuidapi.com/api.php/provide/vod",
-    "group": "normal",
-    "enabled": true,
-    "priority": 5
-  },
-  {
-    "id": "wujin",
-    "name": "🎬无尽资源",
-    "baseUrl": "https://api.wujinapi.me/api.php/provide/vod",
     "group": "normal",
     "enabled": true,
     "priority": 5
@@ -356,17 +356,16 @@
     "name": "🔞-奥斯卡-",
     "baseUrl": "https://aosikazy.com/api.php/provide/vod",
     "group": "premium",
-    "enabled": false,
-    "priority": 101,
-    "_comment": "超时/宕机"
+    "enabled": true,
+    "priority": 5
   },
   {
-    "id": "liangzi",
-    "name": "🎬量子资源",
-    "baseUrl": "https://cj.lzcaiji.com/api.php/provide/vod",
+    "id": "wujin",
+    "name": "🎬无尽资源",
+    "baseUrl": "https://api.wujinapi.me/api.php/provide/vod",
     "group": "normal",
     "enabled": false,
-    "priority": 102,
+    "priority": 101,
     "_comment": "超时/宕机"
   },
   {
@@ -375,7 +374,7 @@
     "baseUrl": "https://jinyingzy.com/api.php/provide/vod",
     "group": "normal",
     "enabled": false,
-    "priority": 104,
+    "priority": 105,
     "_comment": "超时/宕机"
   },
   {
