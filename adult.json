@@ -112,6 +112,14 @@
     "priority": 1
   },
   {
+    "id": "uku",
+    "name": "🎬U酷影视",
+    "baseUrl": "https://api.ukuapi88.com/api.php/provide/vod",
+    "group": "normal",
+    "enabled": true,
+    "priority": 1
+  },
+  {
     "id": "hongniu",
     "name": "🎬红牛资源",
     "baseUrl": "https://www.hongniuzy2.com/api.php/provide/vod",
@@ -171,6 +179,14 @@
     "id": "xiaoji",
     "name": "🔞小鸡资源",
     "baseUrl": "https://api.xiaojizy.live/provide/vod",
+    "group": "premium",
+    "enabled": true,
+    "priority": 1
+  },
+  {
+    "id": "hsck",
+    "name": "🔞黄色仓库",
+    "baseUrl": "https://hsckzy.xyz/api.php/provide/vod",
     "group": "premium",
     "enabled": true,
     "priority": 1
@@ -304,14 +320,6 @@
     "priority": 5
   },
   {
-    "id": "uku",
-    "name": "🎬U酷影视",
-    "baseUrl": "https://api.ukuapi88.com/api.php/provide/vod",
-    "group": "normal",
-    "enabled": true,
-    "priority": 5
-  },
-  {
     "id": "yutu",
     "name": "🔞玉兔资源",
     "baseUrl": "https://apiyutu.com/api.php/provide/vod",
@@ -323,14 +331,6 @@
     "id": "lsbzy",
     "name": "🔞-老色逼-",
     "baseUrl": "https://apilsbzy1.com/api.php/provide/vod",
-    "group": "premium",
-    "enabled": true,
-    "priority": 5
-  },
-  {
-    "id": "hsck",
-    "name": "🔞黄色仓库",
-    "baseUrl": "https://hsckzy.xyz/api.php/provide/vod",
     "group": "premium",
     "enabled": true,
     "priority": 5
@@ -373,7 +373,7 @@
     "baseUrl": "https://shayuapi.com/api.php/provide/vod",
     "group": "premium",
     "enabled": false,
-    "priority": 101,
+    "priority": 102,
     "_comment": "超时/宕机"
   },
   {
