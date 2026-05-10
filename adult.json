@@ -112,14 +112,6 @@
     "priority": 1
   },
   {
-    "id": "uku",
-    "name": "🎬U酷影视",
-    "baseUrl": "https://api.ukuapi88.com/api.php/provide/vod",
-    "group": "normal",
-    "enabled": true,
-    "priority": 1
-  },
-  {
     "id": "hongniu",
     "name": "🎬红牛资源",
     "baseUrl": "https://www.hongniuzy2.com/api.php/provide/vod",
@@ -352,6 +344,14 @@
     "priority": 5
   },
   {
+    "id": "jingpin",
+    "name": "🔞精品资源",
+    "baseUrl": "https://www.jingpinx.com/api.php/provide/vod",
+    "group": "premium",
+    "enabled": true,
+    "priority": 5
+  },
+  {
     "id": "aosika",
     "name": "🔞-奥斯卡-",
     "baseUrl": "https://aosikazy.com/api.php/provide/vod",
@@ -368,6 +368,14 @@
     "priority": 10
   },
   {
+    "id": "guangsu",
+    "name": "🎬光速资源",
+    "baseUrl": "https://api.guangsuapi.com/api.php/provide/vod",
+    "group": "normal",
+    "enabled": true,
+    "priority": 10
+  },
+  {
     "id": "hhzy",
     "name": "🎬豪华资源",
     "baseUrl": "https://hhzyapi.com/api.php/provide/vod",
@@ -376,10 +384,10 @@
     "priority": 10
   },
   {
-    "id": "jingpin",
-    "name": "🔞精品资源",
-    "baseUrl": "https://www.jingpinx.com/api.php/provide/vod",
-    "group": "premium",
+    "id": "uku",
+    "name": "🎬U酷影视",
+    "baseUrl": "https://api.ukuapi88.com/api.php/provide/vod",
+    "group": "normal",
     "enabled": false,
     "priority": 101,
     "_comment": "超时/宕机"
@@ -392,15 +400,6 @@
     "enabled": false,
     "priority": 130,
     "_comment": "搜索无结果"
-  },
-  {
-    "id": "guangsu",
-    "name": "🎬光速资源",
-    "baseUrl": "https://api.guangsuapi.com/api.php/provide/vod",
-    "group": "normal",
-    "enabled": false,
-    "priority": 130,
-    "_comment": "接口解析错误"
   },
   {
     "id": "bdzy",
