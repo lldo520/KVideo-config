@@ -248,14 +248,6 @@
     "priority": 1
   },
   {
-    "id": "semao",
-    "name": "🔞色猫资源",
-    "baseUrl": "https://caiji.semaozy.net/inc/apijson_vod.php/provide/vod",
-    "group": "premium",
-    "enabled": true,
-    "priority": 1
-  },
-  {
     "id": "dbzy",
     "name": "🎬豆瓣资源",
     "baseUrl": "https://caiji.dbzy5.com/api.php/provide/vod",
@@ -280,25 +272,9 @@
     "priority": 5
   },
   {
-    "id": "wujin",
-    "name": "🎬无尽资源",
-    "baseUrl": "https://api.wujinapi.me/api.php/provide/vod",
-    "group": "normal",
-    "enabled": true,
-    "priority": 5
-  },
-  {
     "id": "piaoling",
     "name": "🎬飘零资源",
     "baseUrl": "https://p2100.net/api.php/provide/vod",
-    "group": "normal",
-    "enabled": true,
-    "priority": 5
-  },
-  {
-    "id": "uku",
-    "name": "🎬U酷影视",
-    "baseUrl": "https://api.ukuapi88.com/api.php/provide/vod",
     "group": "normal",
     "enabled": true,
     "priority": 5
@@ -368,12 +344,39 @@
     "priority": 10
   },
   {
+    "id": "wujin",
+    "name": "🎬无尽资源",
+    "baseUrl": "https://api.wujinapi.me/api.php/provide/vod",
+    "group": "normal",
+    "enabled": false,
+    "priority": 101,
+    "_comment": "超时/宕机"
+  },
+  {
+    "id": "uku",
+    "name": "🎬U酷影视",
+    "baseUrl": "https://api.ukuapi88.com/api.php/provide/vod",
+    "group": "normal",
+    "enabled": false,
+    "priority": 101,
+    "_comment": "超时/宕机"
+  },
+  {
+    "id": "semao",
+    "name": "🔞色猫资源",
+    "baseUrl": "https://caiji.semaozy.net/inc/apijson_vod.php/provide/vod",
+    "group": "premium",
+    "enabled": false,
+    "priority": 101,
+    "_comment": "搜索无结果"
+  },
+  {
     "id": "maoyan",
     "name": "🎬猫眼资源",
     "baseUrl": "https://api.maoyanapi.top/api.php/provide/vod",
     "group": "normal",
     "enabled": false,
-    "priority": 101,
+    "priority": 102,
     "_comment": "超时/宕机"
   },
   {
@@ -382,7 +385,7 @@
     "baseUrl": "https://api.xinlangapi.com/xinlangapi.php/provide/vod",
     "group": "normal",
     "enabled": false,
-    "priority": 102,
+    "priority": 103,
     "_comment": "接口解析错误"
   },
   {
@@ -391,7 +394,7 @@
     "baseUrl": "https://wolongzyw.com/api.php/provide/vod",
     "group": "normal",
     "enabled": false,
-    "priority": 109,
+    "priority": 110,
     "_comment": "接口解析错误"
   },
   {
