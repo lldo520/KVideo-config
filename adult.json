@@ -80,14 +80,6 @@
     "priority": 1
   },
   {
-    "id": "subo",
-    "name": "🎬速播资源",
-    "baseUrl": "https://subocaiji.com/api.php/provide/vod",
-    "group": "normal",
-    "enabled": true,
-    "priority": 1
-  },
-  {
     "id": "piaoling",
     "name": "🎬飘零资源",
     "baseUrl": "https://p2100.net/api.php/provide/vod",
@@ -232,6 +224,14 @@
     "priority": 5
   },
   {
+    "id": "lajiao",
+    "name": "🔞辣椒资源",
+    "baseUrl": "https://apilj.com/api.php/provide/vod",
+    "group": "premium",
+    "enabled": true,
+    "priority": 5
+  },
+  {
     "id": "shayu",
     "name": "🔞鲨鱼资源",
     "baseUrl": "https://shayuapi.com/api.php/provide/vod",
@@ -320,10 +320,10 @@
     "priority": 10
   },
   {
-    "id": "lajiao",
-    "name": "🔞辣椒资源",
-    "baseUrl": "https://apilj.com/api.php/provide/vod",
-    "group": "premium",
+    "id": "subo",
+    "name": "🎬速播资源",
+    "baseUrl": "https://subocaiji.com/api.php/provide/vod",
+    "group": "normal",
     "enabled": false,
     "priority": 101,
     "_comment": "超时/宕机"
@@ -334,8 +334,8 @@
     "baseUrl": "https://caiji.dbzy5.com/api.php/provide/vod",
     "group": "normal",
     "enabled": false,
-    "priority": 102,
-    "_comment": "超时/宕机"
+    "priority": 103,
+    "_comment": "接口解析错误"
   },
   {
     "id": "maotai",
@@ -343,8 +343,8 @@
     "baseUrl": "https://caiji.maotaizy.cc/api.php/provide/vod",
     "group": "normal",
     "enabled": false,
-    "priority": 102,
-    "_comment": "超时/宕机"
+    "priority": 103,
+    "_comment": "接口解析错误"
   },
   {
     "id": "senlin",
@@ -352,7 +352,7 @@
     "baseUrl": "https://beiyong.slapibf.com/api.php/provide/vod",
     "group": "premium",
     "enabled": false,
-    "priority": 111,
+    "priority": 112,
     "_comment": "接口解析错误"
   },
   {
@@ -361,7 +361,7 @@
     "baseUrl": "https://api.bwzyz.com/api.php/provide/vod",
     "group": "premium",
     "enabled": false,
-    "priority": 114,
+    "priority": 115,
     "_comment": "接口解析错误"
   },
   {
@@ -370,7 +370,7 @@
     "baseUrl": "https://jinyingzy.com/api.php/provide/vod",
     "group": "normal",
     "enabled": false,
-    "priority": 121,
+    "priority": 122,
     "_comment": "超时/宕机"
   },
   {
@@ -379,7 +379,7 @@
     "baseUrl": "https://aosikazy.com/api.php/provide/vod",
     "group": "premium",
     "enabled": false,
-    "priority": 123,
+    "priority": 124,
     "_comment": "接口解析错误"
   },
   {
