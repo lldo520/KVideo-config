@@ -224,14 +224,6 @@
     "priority": 10
   },
   {
-    "id": "hsck",
-    "name": "🔞黄色仓库",
-    "baseUrl": "https://hsckzy.xyz/api.php/provide/vod",
-    "group": "premium",
-    "enabled": true,
-    "priority": 10
-  },
-  {
     "id": "jkun",
     "name": "🔞jkun资源",
     "baseUrl": "https://jkunzyapi.com/api.php/provide/vod",
@@ -326,6 +318,15 @@
     "group": "premium",
     "enabled": true,
     "priority": 10
+  },
+  {
+    "id": "hsck",
+    "name": "🔞黄色仓库",
+    "baseUrl": "https://hsckzy.xyz/api.php/provide/vod",
+    "group": "premium",
+    "enabled": false,
+    "priority": 101,
+    "_comment": "超时/宕机"
   },
   {
     "id": "dbzy",
