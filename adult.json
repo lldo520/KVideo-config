@@ -112,6 +112,14 @@
     "priority": 10
   },
   {
+    "id": "subo",
+    "name": "🎬速播资源",
+    "baseUrl": "https://subocaiji.com/api.php/provide/vod",
+    "group": "normal",
+    "enabled": true,
+    "priority": 10
+  },
+  {
     "id": "jinying",
     "name": "🎬金鹰点播",
     "baseUrl": "https://jinyingzy.com/api.php/provide/vod",
@@ -224,9 +232,9 @@
     "priority": 10
   },
   {
-    "id": "naixiang",
-    "name": "🔞奶香资源",
-    "baseUrl": "https://Naixxzy.com/api.php/provide/vod",
+    "id": "senlin",
+    "name": "🔞森林资源",
+    "baseUrl": "https://beiyong.slapibf.com/api.php/provide/vod",
     "group": "premium",
     "enabled": true,
     "priority": 10
@@ -304,21 +312,21 @@
     "priority": 10
   },
   {
-    "id": "modu",
-    "name": "🎬魔都资源",
-    "baseUrl": "https://www.mdzyapi.com/api.php/provide/vod",
-    "group": "normal",
+    "id": "naixiang",
+    "name": "🔞奶香资源",
+    "baseUrl": "https://Naixxzy.com/api.php/provide/vod",
+    "group": "premium",
     "enabled": false,
     "priority": 101,
     "_comment": "超时/宕机"
   },
   {
-    "id": "subo",
-    "name": "🎬速播资源",
-    "baseUrl": "https://subocaiji.com/api.php/provide/vod",
+    "id": "modu",
+    "name": "🎬魔都资源",
+    "baseUrl": "https://www.mdzyapi.com/api.php/provide/vod",
     "group": "normal",
     "enabled": false,
-    "priority": 101,
+    "priority": 102,
     "_comment": "超时/宕机"
   },
   {
@@ -327,7 +335,7 @@
     "baseUrl": "https://caiji.moduapi.cc/api.php/provide/vod",
     "group": "normal",
     "enabled": false,
-    "priority": 101,
+    "priority": 102,
     "_comment": "超时/宕机"
   },
   {
@@ -419,15 +427,6 @@
     "enabled": false,
     "priority": 130,
     "_comment": "搜索无结果"
-  },
-  {
-    "id": "senlin",
-    "name": "🔞森林资源",
-    "baseUrl": "https://beiyong.slapibf.com/api.php/provide/vod",
-    "group": "premium",
-    "enabled": false,
-    "priority": 130,
-    "_comment": "接口解析错误"
   },
   {
     "id": "xing",
