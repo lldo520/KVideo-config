@@ -176,14 +176,6 @@
     "priority": 10
   },
   {
-    "id": "alvin",
-    "name": "🔞--AIvin-",
-    "baseUrl": "http://lbapiby.com/api.php/provide/vod",
-    "group": "premium",
-    "enabled": true,
-    "priority": 10
-  },
-  {
     "id": "155zy",
     "name": "🔞155-资源",
     "baseUrl": "https://155api.com/api.php/provide/vod",
@@ -219,6 +211,14 @@
     "id": "xiaoji",
     "name": "🔞小鸡资源",
     "baseUrl": "https://api.xiaojizy.live/provide/vod",
+    "group": "premium",
+    "enabled": true,
+    "priority": 10
+  },
+  {
+    "id": "hsck",
+    "name": "🔞黄色仓库",
+    "baseUrl": "https://hsckzy.xyz/api.php/provide/vod",
     "group": "premium",
     "enabled": true,
     "priority": 10
@@ -328,9 +328,9 @@
     "priority": 10
   },
   {
-    "id": "hsck",
-    "name": "🔞黄色仓库",
-    "baseUrl": "https://hsckzy.xyz/api.php/provide/vod",
+    "id": "alvin",
+    "name": "🔞--AIvin-",
+    "baseUrl": "http://lbapiby.com/api.php/provide/vod",
     "group": "premium",
     "enabled": false,
     "priority": 101,
