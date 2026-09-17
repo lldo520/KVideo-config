@@ -312,6 +312,14 @@
     "priority": 5
   },
   {
+    "id": "senlin",
+    "name": "🔞森林资源",
+    "baseUrl": "https://beiyong.slapibf.com/api.php/provide/vod",
+    "group": "premium",
+    "enabled": true,
+    "priority": 5
+  },
+  {
     "id": "shayu",
     "name": "🔞鲨鱼资源",
     "baseUrl": "https://shayuapi.com/api.php/provide/vod",
@@ -320,10 +328,10 @@
     "priority": 5
   },
   {
-    "id": "senlin",
-    "name": "🔞森林资源",
-    "baseUrl": "https://beiyong.slapibf.com/api.php/provide/vod",
-    "group": "premium",
+    "id": "piaoling",
+    "name": "🎬飘零资源",
+    "baseUrl": "https://p2100.net/api.php/provide/vod",
+    "group": "normal",
     "enabled": true,
     "priority": 10
   },
@@ -333,7 +341,7 @@
     "baseUrl": "http://lbapiby.com/api.php/provide/vod",
     "group": "premium",
     "enabled": false,
-    "priority": 121,
+    "priority": 122,
     "_comment": "超时/宕机"
   },
   {
@@ -371,15 +379,6 @@
     "enabled": false,
     "priority": 130,
     "_comment": "接口解析错误"
-  },
-  {
-    "id": "piaoling",
-    "name": "🎬飘零资源",
-    "baseUrl": "https://p2100.net/api.php/provide/vod",
-    "group": "normal",
-    "enabled": false,
-    "priority": 130,
-    "_comment": "超时/宕机"
   },
   {
     "id": "bdzy",
