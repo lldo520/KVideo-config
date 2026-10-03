@@ -325,8 +325,8 @@
     "baseUrl": "https://subocaiji.com/api.php/provide/vod",
     "group": "normal",
     "enabled": false,
-    "priority": 101,
-    "_comment": "搜索无结果"
+    "priority": 102,
+    "_comment": "超时/宕机"
   },
   {
     "id": "piaoling",
@@ -334,7 +334,7 @@
     "baseUrl": "https://p2100.net/api.php/provide/vod",
     "group": "normal",
     "enabled": false,
-    "priority": 114,
+    "priority": 115,
     "_comment": "超时/宕机"
   },
   {
