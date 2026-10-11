@@ -160,25 +160,9 @@
     "priority": 1
   },
   {
-    "id": "yutu",
-    "name": "🔞玉兔资源",
-    "baseUrl": "https://apiyutu.com/api.php/provide/vod",
-    "group": "premium",
-    "enabled": true,
-    "priority": 1
-  },
-  {
     "id": "fanhao",
     "name": "🔞番号资源",
     "baseUrl": "http://fhapi9.com/api.php/provide/vod",
-    "group": "premium",
-    "enabled": true,
-    "priority": 1
-  },
-  {
-    "id": "lsbzy",
-    "name": "🔞-老色逼-",
-    "baseUrl": "https://apilsbzy1.com/api.php/provide/vod",
     "group": "premium",
     "enabled": true,
     "priority": 1
@@ -216,25 +200,9 @@
     "priority": 1
   },
   {
-    "id": "senlin",
-    "name": "🔞森林资源",
-    "baseUrl": "https://beiyong.slapibf.com/api.php/provide/vod",
-    "group": "premium",
-    "enabled": true,
-    "priority": 1
-  },
-  {
     "id": "lajiao",
     "name": "🔞辣椒资源",
     "baseUrl": "https://apilj.com/api.php/provide/vod",
-    "group": "premium",
-    "enabled": true,
-    "priority": 1
-  },
-  {
-    "id": "shayu",
-    "name": "🔞鲨鱼资源",
-    "baseUrl": "https://shayuapi.com/api.php/provide/vod",
     "group": "premium",
     "enabled": true,
     "priority": 1
@@ -328,12 +296,48 @@
     "priority": 5
   },
   {
+    "id": "yutu",
+    "name": "🔞玉兔资源",
+    "baseUrl": "https://apiyutu.com/api.php/provide/vod",
+    "group": "premium",
+    "enabled": false,
+    "priority": 101,
+    "_comment": "超时/宕机"
+  },
+  {
+    "id": "lsbzy",
+    "name": "🔞-老色逼-",
+    "baseUrl": "https://apilsbzy1.com/api.php/provide/vod",
+    "group": "premium",
+    "enabled": false,
+    "priority": 101,
+    "_comment": "超时/宕机"
+  },
+  {
+    "id": "senlin",
+    "name": "🔞森林资源",
+    "baseUrl": "https://beiyong.slapibf.com/api.php/provide/vod",
+    "group": "premium",
+    "enabled": false,
+    "priority": 101,
+    "_comment": "超时/宕机"
+  },
+  {
+    "id": "shayu",
+    "name": "🔞鲨鱼资源",
+    "baseUrl": "https://shayuapi.com/api.php/provide/vod",
+    "group": "premium",
+    "enabled": false,
+    "priority": 101,
+    "_comment": "超时/宕机"
+  },
+  {
     "id": "piaoling",
     "name": "🎬飘零资源",
     "baseUrl": "https://p2100.net/api.php/provide/vod",
     "group": "normal",
     "enabled": false,
-    "priority": 122,
+    "priority": 123,
     "_comment": "超时/宕机"
   },
   {
