@@ -16,14 +16,6 @@
     "priority": 1
   },
   {
-    "id": "maoyan",
-    "name": "🎬猫眼资源",
-    "baseUrl": "https://api.maoyanapi.top/api.php/provide/vod",
-    "group": "normal",
-    "enabled": true,
-    "priority": 1
-  },
-  {
     "id": "liangzi",
     "name": "🎬量子资源",
     "baseUrl": "https://cj.lzcaiji.com/api.php/provide/vod",
@@ -280,9 +272,33 @@
     "priority": 5
   },
   {
+    "id": "yutu",
+    "name": "🔞玉兔资源",
+    "baseUrl": "https://apiyutu.com/api.php/provide/vod",
+    "group": "premium",
+    "enabled": true,
+    "priority": 5
+  },
+  {
+    "id": "lsbzy",
+    "name": "🔞-老色逼-",
+    "baseUrl": "https://apilsbzy1.com/api.php/provide/vod",
+    "group": "premium",
+    "enabled": true,
+    "priority": 5
+  },
+  {
     "id": "hsck",
     "name": "🔞黄色仓库",
     "baseUrl": "https://hsckzy.xyz/api.php/provide/vod",
+    "group": "premium",
+    "enabled": true,
+    "priority": 5
+  },
+  {
+    "id": "senlin",
+    "name": "🔞森林资源",
+    "baseUrl": "https://beiyong.slapibf.com/api.php/provide/vod",
     "group": "premium",
     "enabled": true,
     "priority": 5
@@ -296,28 +312,10 @@
     "priority": 5
   },
   {
-    "id": "yutu",
-    "name": "🔞玉兔资源",
-    "baseUrl": "https://apiyutu.com/api.php/provide/vod",
-    "group": "premium",
-    "enabled": false,
-    "priority": 101,
-    "_comment": "超时/宕机"
-  },
-  {
-    "id": "lsbzy",
-    "name": "🔞-老色逼-",
-    "baseUrl": "https://apilsbzy1.com/api.php/provide/vod",
-    "group": "premium",
-    "enabled": false,
-    "priority": 101,
-    "_comment": "超时/宕机"
-  },
-  {
-    "id": "senlin",
-    "name": "🔞森林资源",
-    "baseUrl": "https://beiyong.slapibf.com/api.php/provide/vod",
-    "group": "premium",
+    "id": "maoyan",
+    "name": "🎬猫眼资源",
+    "baseUrl": "https://api.maoyanapi.top/api.php/provide/vod",
+    "group": "normal",
     "enabled": false,
     "priority": 101,
     "_comment": "超时/宕机"
@@ -328,7 +326,7 @@
     "baseUrl": "https://shayuapi.com/api.php/provide/vod",
     "group": "premium",
     "enabled": false,
-    "priority": 101,
+    "priority": 102,
     "_comment": "超时/宕机"
   },
   {
@@ -337,7 +335,7 @@
     "baseUrl": "https://p2100.net/api.php/provide/vod",
     "group": "normal",
     "enabled": false,
-    "priority": 123,
+    "priority": 124,
     "_comment": "超时/宕机"
   },
   {
